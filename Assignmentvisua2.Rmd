@@ -1,0 +1,132 @@
+---
+title: "Sriharsha"
+output: 
+  flexdashboard::flex_dashboard:
+    orientation: rows
+    vertical_layout: scroll
+---
+
+```{r setup, include=FALSE}
+library(flexdashboard)
+library(tm)
+library(SnowballC)
+library(wordcloud)
+library(stringr)
+library(RColorBrewer)
+library(dplyr)
+library(wordcloud)
+library(reshape2)
+library(plotly)
+narendramodi_tweets <- read.csv("C:/Users/Admin/Downloads/narendramodi_tweets.csv")
+tweety<-narendramodi_tweets
+```
+
+
+
+
+Column {data-width=650}
+-----------------------------------------------------------------------
+###	Total Number of Tweets
+
+```{r}
+Num.of_tweets = nrow(tweety)
+valueBox(Num.of_tweets,icon = 'fa-pencil',color = 'orange')
+
+
+```
+
+###	Average number of retweets
+```{r}
+avg_retweets = round(sum(tweety$retweets_count)/nrow(tweety))
+
+valueBox(avg_retweets,icon = "fa-code",color = 'green')
+
+```
+
+
+###	Average number of favorites
+
+```{r}
+avg_fav=round(sum(tweety$favorite_count)/nrow(tweety))
+valueBox(avg_fav,icon = "fa-circle",color = 'pink')
+
+```
+
+
+
+row {data-width=650}
+------------------------------------------------------------------------
+### Top words quaterly
+```{r}
+tweety$dates<- as.Date(tweety$created_at,format="%d-%m-%Y %H:%M")
+tweety$year <- format(tweety$dates,"%Y")
+tweety$month <- format(tweety$dates,"%m")
+tweety$day <- format(tweety$dates,"%d")
+tweety$year_month <- format(tweety$dates,"%Y-%m")
+tweets <- tweety %>% filter(year==2016)
+tweets$text = as.character(tweets$text)
+word_list = strsplit(tweets$text," ")
+words<- unlist(word_list)
+words_count <- table(words)
+words_count <- sort(words_count,decreasing = T)
+words_count <- as.data.frame(words_count)
+stop_words <- stopwords()
+custom_stop_words <- c("&amp;","rt","рд.ре???")
+words_count$words <- tolower(words_count$words)
+words_count <- words_count[!words_count$words %in% stop_words,]
+words_count <- words_count[!words_count$words %in% custom_stop_words,]
+tweety$quarter <- quarters(tweety$dates)
+top_words <- c("india","people","pm","president")
+tweety$text <- tolower(tweety$text)
+for(word in top_words){
+  tweety[word]<- str_count(tweety$text,word)
+}
+
+tweetsA <- tweety %>% filter(year== 2016) %>% group_by(quarter) %>% summarise(India= sum(india,na.rm=T),People= sum(people,na.rm=T),PM=sum(pm,na.rm=T),President = sum(president,na.rm=T)) 
+tweetsB <- melt(tweetsA,id.vars= "quarter")
+names(tweetsB)<- c("Quarter","Top_Words","Count")
+c<-ggplot(tweetsB,aes(Quarter,Count)) + geom_bar(fill="skyblue",stat ="identity") +facet_wrap(~Top_Words)
+ggplotly(c)
+
+
+
+```
+
+
+
+
+Column {data-width=350}
+-----------------------------------------------------------------------
+
+### HashTags
+```{r}
+Hashtag_tweets= subset(tweets,select = c(5,10,19)) 
+Hashtag_tweets= subset(Hashtag_tweets,Hashtag_tweets$hashtags_count>0)
+hashtag_list <- str_extract_all(Hashtag_tweets$text,"#\\S+")
+hashtag_unlist <- unlist(hashtag_list)
+hashtag_words <- table(hashtag_unlist)
+hashtag_words <- sort(hashtag_words,decreasing = T)
+hashtag_df <- as.data.frame(hashtag_words)
+top_hashtag <- head(hashtag_df,5)
+top_hashtag_words <- c('#TirangaYatra','#Sandesh2Soldiers','#MannKiBaat','#YogaDay','#TransformingIndia')
+for (word in top_hashtag_words){
+Hashtag_tweets[word] <- str_count(Hashtag_tweets$text,word)
+}
+
+subset_hash <- subset(Hashtag_tweets,select = c(3,4,5,6,7,8)) 
+
+melt_subse = melt(subset_hash,id.vars = c("year_month"))
+grouping<-melt_subse %>% group_by(year_month,variable) %>% summarise(count= sum(value))
+plotting<-ggplot(grouping,aes(x=year_month,y=count,group=variable,color=variable)) +geom_line()
+ggplotly(plotting)
+
+```
+
+### wordcloud
+
+```{r}
+hashtag_wordcloud <- head(hashtag_words,50)
+hashtag_wordcloud <- as.data.frame(hashtag_wordcloud)
+wordcloud(hashtag_wordcloud$hashtag_unlist,hashtag_wordcloud$Freq,scale = c(2,0.4),colors = brewer.pal(6,'Dark2'))
+```
+
