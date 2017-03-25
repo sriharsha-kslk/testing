@@ -1,0 +1,34 @@
+---
+title: "Batterylife"
+author: "Harsha"
+date: "30 January 2017"
+output: html_document
+---
+```{r}
+trainingdata <- read.csv("C:/Users/Admin/Desktop/trainingdata.txt")
+ View(trainingdata)
+head(trainingdata)
+par(mar=rep(2,4))
+plot(trainingdata$amountof.time,trainingdata$batterylife)
+library(VIM)
+impute_data<-aggr(trainingdata,col=c('yellow','red'),
+                  numbers=TRUE,sortVars=TRUE,
+                  labels=names(trainingdata),gap=3,
+                  ylab=c("Missing Data","Pattern")) 
+battery_x <- subset(trainingdata,subset=amountof.time<= 4)
+lm_battery<-lm(batterylife~amountof.time,data = battery_x )
+summary(lm_battery)
+
+```
+
+```{r}
+layout(matrix(c(1,2,3,4),2,2))
+plot(lm_battery)
+plot(battery_x$amountof.time,battery_x$batterylife)
+abline(lm_battery,col="red")
+input <-  data.frame("amountof.time"= amountof.time)
+output <- ifelse(battery_x$amountof.time<=4,predict(lm_battery,input),8)
+
+
+```
+
